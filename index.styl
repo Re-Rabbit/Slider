@@ -1,0 +1,54 @@
+///
+// Slider
+///
+
+@require "styles/space"
+
+slider-cursor-size = 1em
+slider-line-height = 0.25em
+
+slider-color = #607d8b
+slider-val = 0%
+
+slider-cursor-back-y = - slider-cursor-size / 2 + slider-line-height / 2
+slider-cursor-back-x = - slider-cursor-size / 2
+
+
+slider-theme()
+  &__fill
+  &__cursor
+    bg slider-color
+
+slider-base()
+  dis ib
+  w 100%
+
+  &__line
+    box bdbox
+    pos rela
+    z 1
+    mx (slider-cursor-size / 2)
+    h slider-line-height
+    bdrz slider-line-height
+
+  &__fill
+    fill(l)
+    w slider-val
+    bdrz slider-line-height
+
+  &__cursor
+    dis ib
+    pos abso
+    t 0
+    l slider-val
+    z 2
+    size slider-cursor-size
+    ml slider-cursor-back-x
+    mt slider-cursor-back-y
+    bdrz 50%
+    bg slider-color
+
+
+slider()
+  slider-base()
+  slider-theme()
