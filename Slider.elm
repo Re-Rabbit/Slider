@@ -1,12 +1,12 @@
 port module Slider.Slider exposing (..)
 
+
 import Html exposing (..)
 import Html.Events exposing (..)
 import Html.Attributes exposing (..)
 import Html.App as App
 import Draggable.Draggable as Draggable
-import Mouse
-import Json.Decode as Json
+import Mouse exposing (Position)
 
 
 main =
@@ -21,8 +21,10 @@ main =
 -- MODEL
 
 type alias Model =
-  { min : Int
-  , max : Int
+  { min   : Int
+  , max   : Int
+  , width : Int
+  , uuid  : Int
   , draggable : Draggable.Model
   }
 
@@ -31,14 +33,20 @@ initModel : Model
 initModel =
   { min = 0
   , max = 100
-  , draggable = Draggable.initModel
+  , uuid = 1
+  , width = 0
+  , draggable =
+      { position = Position 0 0
+      , axis     = Draggable.X
+      , drag     = Nothing
+      , grid     = Nothing
+      }
   }
 
 
---TODO: replace init function.
 init : (Model, Cmd Msg)
 init =
-  (initModel, Cmd.none)
+  (initModel, fetchSize initModel.uuid)
 
 
 
@@ -46,6 +54,7 @@ init =
 
 type Msg
   = NoOp
+  | SetWidth Int
   | MsgDraggable Draggable.Msg
 
 update : Msg -> Model -> (Model, Cmd Msg)
@@ -58,9 +67,28 @@ update msg model =
       in
         ( { model | draggable = m }
         , Cmd.map MsgDraggable fx
+        {-
+        , Cmd.batch
+            [ Cmd.map MsgDraggable fx
+            , distance (toString model.draggable.position.x)
+            ]
+        -}
+        )
+    SetWidth width ->
+      let
+        _ =
+          Debug.log "width" (toString width)
+      in
+        ( { model | width = width }
+        , Cmd.none
         )
     _ ->
       (model, Cmd.none)
+
+
+
+port fetchSize : Int -> Cmd msg
+port precentage : (Int -> msg) -> Sub msg
 
 
 
@@ -68,9 +96,13 @@ update msg model =
 
 subscriptions : Model -> Sub Msg
 subscriptions model =
+    --{--
   Sub.batch
     [ Sub.map MsgDraggable <| Draggable.subscriptions model.draggable
+    , precentage SetWidth
     ]
+    --}
+  --precentage SetWidth
 
 
 
@@ -78,10 +110,25 @@ subscriptions model =
 
 view : Model -> Html Msg
 view model =
-  div [ class "slider" ]
-    [ div [ class "slider__line" ]
-       [ div [ class "slider__cursor" ] []
+  let
+    _ =
+      Debug.log "model" (getPrecentage model)
+  in
+    div [ class "slider"
+        , attribute "data-uuid" (toString model.uuid)
+        ]
+      [ div [ class "slider__line" ]
+       [ App.map MsgDraggable (Draggable.view model.draggable)
+             {-
+        div [ class "slider__cursor" ]
+           [ App.map MsgDraggable (Draggable.view model.draggable)
+           ]
+           -}
        , div [ class "slider__fill" ] []
        ]
-    , App.map MsgDraggable (Draggable.view model.draggable)
-    ]
+      ]
+
+
+getPrecentage : Model -> Float
+getPrecentage { draggable, width } =
+  (toFloat draggable.position.x) / (toFloat width)
