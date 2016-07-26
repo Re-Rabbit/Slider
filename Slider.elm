@@ -31,22 +31,24 @@ type alias Model =
 
 initModel : Model
 initModel =
-  { min = 0
-  , max = 100
-  , uuid = 1
-  , width = 0
-  , draggable =
-      { position = Position 0 0
-      , axis     = Draggable.X
-      , drag     = Nothing
-      , grid     = Nothing
+  let
+    draggableInitModel = Draggable.initModel
+    draggableOptions =
+      { draggableInitModel
+          | axis = Draggable.X
       }
-  }
+  in
+    { min = 0
+    , max = 100
+    , uuid = 1
+    , width = 0
+    , draggable = draggableOptions
+    }
 
 
 init : (Model, Cmd Msg)
 init =
-  (initModel, fetchSize initModel.uuid)
+  (initModel, getSize initModel.uuid)
 
 
 
@@ -76,10 +78,15 @@ update msg model =
         )
     SetWidth width ->
       let
-        _ =
-          Debug.log "width" (toString width)
+        initScope = Draggable.initScope
+        draggable = model.draggable
+        scopeX = { initScope | minX = Just 0, maxX = Just width }
+        setDraggable = { draggable | scope = scopeX }
       in
-        ( { model | width = width }
+        ( { model
+              | width = width
+              , draggable = setDraggable
+          }
         , Cmd.none
         )
     _ ->
@@ -87,8 +94,8 @@ update msg model =
 
 
 
-port fetchSize : Int -> Cmd msg
-port precentage : (Int -> msg) -> Sub msg
+port getSize : Int -> Cmd msg
+port setSize : (Int -> msg) -> Sub msg
 
 
 
@@ -96,13 +103,10 @@ port precentage : (Int -> msg) -> Sub msg
 
 subscriptions : Model -> Sub Msg
 subscriptions model =
-    --{--
   Sub.batch
     [ Sub.map MsgDraggable <| Draggable.subscriptions model.draggable
-    , precentage SetWidth
+    , setSize SetWidth
     ]
-    --}
-  --precentage SetWidth
 
 
 
@@ -112,7 +116,7 @@ view : Model -> Html Msg
 view model =
   let
     _ =
-      Debug.log "model" (getPrecentage model)
+      "1"--Debug.log "model" (getPrecentage model)
   in
     div [ class "slider"
         , attribute "data-uuid" (toString model.uuid)
