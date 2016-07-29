@@ -24,8 +24,8 @@ main =
 
 
 type alias Size =
-  { left  : Float
-  , width : Float
+  { left  : Int
+  , width : Int
   }
 
 type alias Model =
@@ -34,6 +34,7 @@ type alias Model =
   , width : Int
   , value : Float
   , uuid  : Int
+  , size  : Size
   , draggable : Draggable.Model
   }
 
@@ -52,6 +53,10 @@ initModel =
     , uuid = 1
     , width = 0
     , value = 0
+    , size =
+        { left = 0
+        , width = 0
+        }
     , draggable = draggableOptions
     }
 
@@ -66,7 +71,7 @@ init =
 
 type Msg
   = NoOp
-  | SetWidth Int
+  | SetWidth Size
   | SetValue Position
   | MsgDraggable Draggable.Msg
 
@@ -84,7 +89,7 @@ update msg model =
           }
         , Cmd.map MsgDraggable fx
         )
-    SetWidth width ->
+    SetWidth ({ width, left } as size) ->
       let
         initScope = Draggable.initScope
         draggable = model.draggable
@@ -98,24 +103,36 @@ update msg model =
           }
       in
         ( { model
-              | width = width
+              --| width = width
+              | size = size
               , draggable = setDraggable
           }
         , Cmd.none
         )
-    SetValue position ->
+    SetValue { x } ->
       let
-        _ =
-          Debug.log "pos" position
+        { size, draggable } =
+          model
+        moved =
+          x - size.left
+        value' =
+          (toFloat moved) / (toFloat size.width)
+        (mDraggable, _) =
+          Draggable.update (Draggable.SetPositionX moved) draggable
       in
-        (model, Cmd.none)
+        ( { model
+              | value = value'
+              , draggable = mDraggable
+          }
+        , Cmd.none
+        )
     _ ->
       (model, Cmd.none)
 
 
 
 port getSize : Int -> Cmd msg
-port setSize : (Int -> msg) -> Sub msg
+port setSize : (Size -> msg) -> Sub msg
 
 
 
@@ -158,5 +175,5 @@ view model =
 
 
 getPrecentage : Model -> Float
-getPrecentage { draggable, width } =
-  (toFloat (Draggable.getPosition draggable).x) / (toFloat width)
+getPrecentage { draggable, size } =
+  (toFloat (Draggable.getPosition draggable).x) / (toFloat size.width)
