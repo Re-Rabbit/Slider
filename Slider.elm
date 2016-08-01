@@ -1,5 +1,14 @@
 port module Slider.Slider exposing (..)
 
+{-| Slider Component.
+
+@private
+@require { Draggable }
+
+@TODO stepGrow supports.
+
+ -}
+
 
 import Html exposing (..)
 import Html.Events exposing (..)
@@ -8,16 +17,8 @@ import Html.App as App
 import Draggable.Draggable as Draggable
 import Mouse exposing (Position)
 import Json.Decode as Json
---import Util.Style exposing (floatToPrecentage)
+import Window
 
-
-main =
-  App.program
-    { init = init
-    , view = view
-    , update = update
-    , subscriptions = subscriptions
-    }
 
 
 -- MODEL
@@ -31,7 +32,6 @@ type alias Size =
 type alias Model =
   { min   : Int
   , max   : Int
-  , width : Int
   , value : Float
   , uuid  : Int
   , size  : Size
@@ -51,7 +51,6 @@ initModel =
     { min = 0
     , max = 100
     , uuid = 1
-    , width = 0
     , value = 0
     , size =
         { left = 0
@@ -73,6 +72,7 @@ type Msg
   = NoOp
   | SetWidth Size
   | SetValue Position
+  | ResizeWindow Window.Size
   | MsgDraggable Draggable.Msg
 
 update : Msg -> Model -> (Model, Cmd Msg)
@@ -109,6 +109,10 @@ update msg model =
           }
         , Cmd.none
         )
+
+    ResizeWindow size ->
+      (model, getSize initModel.uuid)
+
     SetValue { x } ->
       let
         { size, draggable } =
@@ -126,6 +130,7 @@ update msg model =
           }
         , Cmd.none
         )
+
     _ ->
       (model, Cmd.none)
 
@@ -141,8 +146,9 @@ port setSize : (Size -> msg) -> Sub msg
 subscriptions : Model -> Sub Msg
 subscriptions model =
   Sub.batch
-    [ Sub.map MsgDraggable <| Draggable.subscriptions model.draggable
+    [ Sub.map MsgDraggable (Draggable.subscriptions model.draggable)
     , setSize SetWidth
+    , Window.resizes ResizeWindow
     ]
 
 
@@ -154,22 +160,30 @@ view model =
   let
     viewDraggable =
       Draggable.view [ class "slider__cursor" ] model.draggable
+
     viewCursor =
       App.map MsgDraggable viewDraggable
+
     fillWidth =
-      toString (model.value * 100) ++ "%"
+      toString (ceiling (model.value * 100)) ++ "%"
+
     viewFill =
       div [ class "slider__fill"
           , style [( "width", fillWidth )]
           ] []
+
     viewLine =
       div [ class "slider__line"
           , on "mousedown" (Json.map SetValue Mouse.position)
           ] [ viewCursor, viewFill ]
+
     viewSlider =
       div [ class "slider"
           , attribute "data-uuid" (toString model.uuid)
-          ] [ viewLine, text fillWidth ]
+          ]
+        [ viewLine
+        , text fillWidth
+        ]
   in
     viewSlider
 
